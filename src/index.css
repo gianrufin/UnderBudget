@@ -1,7 +1,14 @@
 @import 'tailwindcss';
 
+/* Class-based dark mode so the in-app theme toggle can override the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   color-scheme: light dark;
+}
+
+.dark {
+  color-scheme: dark;
 }
 
 html,

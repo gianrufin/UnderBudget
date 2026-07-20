@@ -26,7 +26,11 @@ export function useLocalStorage(key, initialValue) {
   useEffect(() => {
     function handleStorage(event) {
       if (event.key !== key) return
-      setValue(event.newValue ? safeParse(event.newValue, initialValue) : initialValue)
+      setValue(
+        event.newValue
+          ? safeParse(event.newValue, resolveInitial(initialValue))
+          : resolveInitial(initialValue),
+      )
     }
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
@@ -36,12 +40,17 @@ export function useLocalStorage(key, initialValue) {
   return [value, setValue]
 }
 
+/** Resolve a possibly-lazy initial value (supports useState-style functions). */
+function resolveInitial(initialValue) {
+  return typeof initialValue === 'function' ? initialValue() : initialValue
+}
+
 function readStored(key, initialValue) {
   try {
     const raw = window.localStorage.getItem(key)
-    return raw === null ? initialValue : safeParse(raw, initialValue)
+    return raw === null ? resolveInitial(initialValue) : safeParse(raw, resolveInitial(initialValue))
   } catch {
-    return initialValue
+    return resolveInitial(initialValue)
   }
 }
 

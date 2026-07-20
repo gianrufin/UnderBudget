@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import { toNumber } from '../lib/format'
+import { useCurrency } from '../context/CurrencyContext'
 
-const EMPTY = { name: '', price: '', quantity: 1 }
+const EMPTY = { name: '', price: '', quantity: 1, note: '' }
 
 /**
  * Bottom-sheet form for creating or editing an item.
@@ -17,6 +18,7 @@ export default function ItemFormSheet({
   onClose,
   onSubmit,
 }) {
+  const { symbol } = useCurrency()
   const [form, setForm] = useState(EMPTY)
   const nameRef = useRef(null)
 
@@ -28,13 +30,14 @@ export default function ItemFormSheet({
         name: editingItem.name,
         price: String(editingItem.price),
         quantity: editingItem.quantity,
+        note: editingItem.note ?? '',
       })
     } else {
       setForm({ ...EMPTY, price: prefillPrice ?? '' })
     }
   }, [open, editingItem, prefillPrice])
 
-  // Focus the name field on open (mobile-friendly).
+  // Focus the name field when adding (mobile-friendly).
   useEffect(() => {
     if (open && !editingItem) {
       const t = setTimeout(() => nameRef.current?.focus(), 150)
@@ -72,6 +75,7 @@ export default function ItemFormSheet({
       name: name || 'Untitled item',
       price: toNumber(form.price),
       quantity,
+      note: form.note.trim(),
     })
   }
 
@@ -122,7 +126,7 @@ export default function ItemFormSheet({
                 Price
               </span>
               <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:focus-within:ring-emerald-900/40">
-                <span className="text-slate-400">$</span>
+                <span className="text-slate-400">{symbol}</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -167,6 +171,28 @@ export default function ItemFormSheet({
                 </button>
               </div>
             </div>
+          </div>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">
+              Note <span className="normal-case text-slate-300">(optional)</span>
+            </span>
+            <input
+              type="text"
+              value={form.note}
+              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+              placeholder="e.g. brand, aisle, size…"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-emerald-900/40"
+            />
+          </label>
+
+          {/* Live line total */}
+          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm dark:bg-slate-800/60">
+            <span className="text-slate-400">Line total</span>
+            <span className="font-semibold text-slate-900 tabular-nums dark:text-white">
+              {symbol}
+              {(toNumber(form.price) * quantity).toFixed(2)}
+            </span>
           </div>
 
           <button

@@ -1,29 +1,35 @@
 # UnderBudget
 
-A mobile-first, list-based budget calculator. Set a budget, add items to a
-list, and use the always-on calculator to crunch numbers (price-per-ounce,
-splitting a cost) before piping the result straight into a new item. Built for
-groceries but generic enough for travel or project budgets.
+A mobile-first grocery budget calculator for fast, one-handed use while
+shopping. Set a budget, punch in items on the always-visible number pad, and
+watch the entire screen shift color as you get closer to your limit.
+
+_Stay aware. Spend within your limit._
 
 ## Features
 
-- **Sticky budget header** — total budget, spent, remaining balance, and
-  in-cart count, with a progress bar that turns **orange at 80%** and **red
-  past 100%**.
-- **Multiple lists** — keep separate budgets for groceries, a trip, a project,
-  etc. Create, rename, delete, and switch between them from the top tabs.
-- **Rich items** — name, price, quantity, and an optional note. Check items off
-  (in-cart), edit, duplicate, reorder (up/down), and delete — with an **undo**
-  toast on delete. Sort by name, price, or “to buy first”.
-- **Persistent calculator** — a docked keypad (`+ − × ÷`, `%`, `±`) with a live
-  result, **calculation history**, physical-keyboard support, and a button to
-  pipe the result straight into a new item's price.
-- **Settings** — currency picker (15 currencies), light / dark / system theme,
-  and JSON **export / import** plus a full reset.
-- **Local persistence** — everything is saved to `localStorage` (with a v1→v2
-  migration) and syncs across tabs.
-- **Mobile-first & installable** — one-handed layout, haptic taps, safe-area
-  padding, a PWA manifest, and light/dark support.
+- **Persistent number pad** — a docked, calculator-style keypad that never
+  hides behind a modal. It drives whichever field is active (price or
+  quantity), so the native mobile keyboard never pops up.
+- **One-handed flow** — type an item name, tap the price field, punch in the
+  price, tap **Add**. The name field clears and refocuses so you can go
+  straight into the next product without lifting your thumb.
+- **Full-canvas budget color** — the background gradient, cards, borders,
+  progress bar, glow, and buttons all interpolate smoothly from cool green
+  (comfortable) through yellow, orange, and red (over budget) based on
+  `spent / budget`. Status is always paired with a text label
+  ("Be mindful", "Over budget", …), never color alone.
+- **Item management** — mark items purchased, duplicate, edit inline (reuses
+  the same quick-add row), delete with an **undo** toast, and sort by recency,
+  price, or name.
+- **Budget controls** — edit the budget inline, reset it, or start a new list
+  while keeping the current budget, all from a compact overflow menu.
+- **Local persistence** — budget, items, theme, and sort preference are saved
+  to `localStorage` and restored on refresh. No account or backend required.
+- **Light / dark, AMOLED-friendly** — true near-black surfaces in dark mode,
+  with the same budget-driven gradients layered on top.
+- **Accessible** — labeled inputs, visible focus states, live-region status
+  announcements, large tap targets, and `prefers-reduced-motion` support.
 
 ## Tech stack
 
@@ -40,30 +46,38 @@ npm run preview  # preview the production build
 
 ## Architecture
 
-State is centralized in the `useBudgetStore` hook and persisted through
-`useLocalStorage`. `App.jsx` wires the store to the UI; totals are derived from
-the active list's items. Currency formatting flows through a small context.
+State lives in `useGroceryStore` (budget, items, theme, sort — persisted via
+`useLocalStorage`). `useBudgetColors` turns the spend ratio into a set of CSS
+custom properties (`--canvas-start`, `--accent-color`, `--progress-color`,
+etc.) that every surface reads from, so the color transition is driven from
+one place. `App.jsx` owns the ephemeral quick-add state (`itemName`, `price`,
+`quantity`, `activeInput`) and wires the persistent number pad to whichever
+field is active.
 
 ```
 src/
-  App.jsx                    # composition, UI state, export/import, undo
-  context/CurrencyContext.jsx
+  App.jsx                     # composition, quick-add state, keypad routing
   hooks/
-    useBudgetStore.js        # lists, items, settings, history + persistence
-    useLocalStorage.js       # persistence primitive (+ cross-tab sync)
-    useTheme.js              # light / dark / system
+    useGroceryStore.js        # budget, items, theme, sort + persistence
+    useLocalStorage.js        # persistence primitive (+ cross-tab sync)
+    useTheme.js                # light / dark / system, returns isDark
+    useBudgetColors.js         # ratio -> CSS custom properties
   lib/
-    format.js                # currency / number helpers
-    calculator.js            # safe arithmetic evaluator (no eval)
-    currencies.js            # supported currencies
-    haptics.js               # vibration tap
+    color.js                  # budget color stops + interpolation
+    format.js                 # currency (en-PH / PHP) + number helpers
+    haptics.js                # vibration tap
   components/
-    ListSwitcher.jsx         # top list tabs + settings
-    BudgetHeader.jsx         # budget, spent, remaining, progress bar
-    ItemList.jsx / ItemRow.jsx   # list, sort, per-row actions
-    ItemFormSheet.jsx        # add / edit item (name, price, qty, note)
-    Calculator.jsx           # keypad, history, keyboard, pipe-to-price
-    ListManagerSheet.jsx     # create / rename / delete lists
-    SettingsSheet.jsx        # currency, theme, export / import, reset
-    Sheet.jsx / Toast.jsx    # reusable bottom sheet + undo toast
+    Header.jsx / UnderBudgetLogo.jsx / ThemeToggle.jsx / OverflowMenu.jsx
+    BudgetSetup.jsx            # first-run budget entry
+    BudgetSummary.jsx / BudgetProgress.jsx / BudgetStatus.jsx / BudgetEditor.jsx
+    GroceryList.jsx / GroceryItemRow.jsx / EmptyState.jsx
+    QuickAddPanel.jsx / ItemNameInput.jsx / PriceDisplay.jsx / QuantityInput.jsx
+    PersistentNumberPad.jsx    # the always-visible keypad
+    ClearListDialog.jsx / ToastNotification.jsx / AppShell.jsx
 ```
+
+## Currency
+
+Defaults to Philippine peso via `Intl.NumberFormat('en-PH', { currency: 'PHP' })`
+in `lib/format.js`. The locale/currency are parameters, so more currencies can
+be added later without touching call sites.

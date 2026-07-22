@@ -72,16 +72,16 @@ export default function App() {
     else setQuantity('')
   }, [activeInput])
 
-  const canAdd = itemName.trim().length > 0 && toNumber(price) > 0
+  const canAdd = toNumber(price) > 0
 
   const handleAdd = useCallback(() => {
-    const name = itemName.trim()
     const priceNum = toNumber(price)
     const qtyNum = toNumber(quantity) > 0 ? toNumber(quantity) : 1
-    if (!name || priceNum <= 0) {
-      showToast(!name ? 'Enter an item name first' : 'Enter a price greater than zero')
+    if (priceNum <= 0) {
+      showToast('Enter a price greater than zero')
       return
     }
+    const name = itemName.trim() || `Item ${items.length + 1}`
     if (editingId) {
       actions.updateItem(editingId, { name, price: priceNum, quantity: qtyNum })
       showToast(`Updated "${name}"`)
@@ -90,8 +90,8 @@ export default function App() {
       setLastAddedId(item.id)
     }
     resetQuickAdd()
-    nameRef.current?.focus()
-  }, [itemName, price, quantity, editingId, actions, resetQuickAdd, showToast])
+    priceRef.current?.focus()
+  }, [itemName, price, quantity, items.length, editingId, actions, resetQuickAdd, showToast])
 
   // -- Physical-keyboard support while a numeric field is focused -------------
   useEffect(() => {

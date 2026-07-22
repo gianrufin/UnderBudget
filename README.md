@@ -30,10 +30,14 @@ _Stay aware. Spend within your limit._
   with the same budget-driven gradients layered on top.
 - **Accessible** — labeled inputs, visible focus states, live-region status
   announcements, large tap targets, and `prefers-reduced-motion` support.
+- **Installable PWA** — manifest + service worker (via `vite-plugin-pwa`)
+  precache the app shell, so it installs to the home screen and keeps working
+  fully offline after the first load. Updates apply automatically in the
+  background.
 
 ## Tech stack
 
-React (Vite) · Tailwind CSS v4 · Lucide React icons
+React (Vite) · Tailwind CSS v4 · Lucide React icons · vite-plugin-pwa
 
 ## Getting started
 
@@ -81,3 +85,13 @@ src/
 Defaults to Philippine peso via `Intl.NumberFormat('en-PH', { currency: 'PHP' })`
 in `lib/format.js`. The locale/currency are parameters, so more currencies can
 be added later without touching call sites.
+
+## PWA
+
+`vite-plugin-pwa` is configured in `vite.config.js` with `registerType:
+'autoUpdate'` — it generates the manifest, a service worker (Workbox
+`generateSW` strategy), and injects the registration script into
+`index.html` at build time. Icons live in `public/` (`icon.svg`,
+`icon-192.png`, `icon-512.png`, `icon-maskable-512.png`,
+`apple-touch-icon.png`). The service worker only runs in production builds
+(`npm run build && npm run preview`) — it's disabled in `npm run dev`.

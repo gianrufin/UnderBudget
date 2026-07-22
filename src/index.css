@@ -5,10 +5,28 @@
 
 :root {
   color-scheme: light dark;
+  --canvas-start: #f2fbf6;
+  --canvas-end: #fbfaf0;
+  --surface-color: #ffffff;
+  --accent-color: #0ea472;
+  --progress-color: #0ea472;
+  --border-color: #a7e8cd;
+  --glow-color: rgba(14, 164, 114, 0.2);
+  --warning-color: #047857;
+  --primary-button-color: #0ea472;
 }
 
 .dark {
   color-scheme: dark;
+  --canvas-start: #050505;
+  --canvas-end: #061f16;
+  --surface-color: #0b0f0d;
+  --accent-color: #22c98a;
+  --progress-color: #22c98a;
+  --border-color: #12362a;
+  --glow-color: rgba(34, 201, 138, 0.22);
+  --warning-color: #6ee7b7;
+  --primary-button-color: #22c98a;
 }
 
 html,
@@ -42,6 +60,28 @@ body {
   }
   to {
     transform: translateY(0);
+  }
+}
+
+@keyframes itemIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

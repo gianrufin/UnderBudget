@@ -1,17 +1,18 @@
 /**
- * Format a number as a currency string. Defaults to USD but the symbol is the
- * only user-facing piece, so contexts (travel, projects) can swap it later.
+ * Format a number as a currency string. Defaults to Philippine peso, kept
+ * modular via `currency`/`locale` so more currencies can be added later.
  */
-export function formatCurrency(value, { currency = 'USD', locale } = {}) {
+export function formatCurrency(value, { currency = 'PHP', locale = 'en-PH' } = {}) {
   const amount = Number.isFinite(value) ? value : 0
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
+      minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount)
   } catch {
-    return `$${amount.toFixed(2)}`
+    return `₱${amount.toFixed(2)}`
   }
 }
 

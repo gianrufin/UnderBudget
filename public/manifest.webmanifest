@@ -1,11 +1,11 @@
 {
   "name": "UnderBudget",
   "short_name": "UnderBudget",
-  "description": "A mobile-first list budget calculator.",
+  "description": "Stay aware. Spend within your limit. A grocery budget calculator for fast, one-handed use while shopping.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#050505",
+  "theme_color": "#0ea472",
   "icons": [
     {
       "src": "/calculator.svg",

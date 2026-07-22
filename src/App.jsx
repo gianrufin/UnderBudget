@@ -22,6 +22,8 @@ export default function App() {
   const [clearOpen, setClearOpen] = useState(false)
   const [toast, setToast] = useState(null)
   const [lastAddedId, setLastAddedId] = useState(null)
+  const [summaryCompact, setSummaryCompact] = useState(false)
+  const mainRef = useRef(null)
 
   // Quick-add fields — lives here so the persistent keypad can drive
   // whichever one (price or quantity) is currently active.
@@ -144,6 +146,13 @@ export default function App() {
     showToast('Last item removed')
   }, [actions, showToast])
 
+  // Shrink the sticky summary once the list is scrolled, expand again near
+  // the top — with a little hysteresis so it doesn't flicker mid-scroll.
+  const handleMainScroll = useCallback(() => {
+    const top = mainRef.current?.scrollTop ?? 0
+    setSummaryCompact((prev) => (prev ? top > 12 : top > 48))
+  }, [])
+
   if (!budget) {
     return (
       <AppShell>
@@ -172,14 +181,24 @@ export default function App() {
         hasBudget={Boolean(budget)}
       />
 
-      <main className="flex-1 overflow-y-auto">
-        <BudgetSummary
-          budget={budget}
-          spent={spent}
-          ratio={ratio}
-          status={status}
-          onBudgetChange={actions.setBudget}
-        />
+      <main ref={mainRef} onScroll={handleMainScroll} className="flex-1 overflow-y-auto">
+        <div
+          className="sticky top-0 z-10 backdrop-blur transition-colors duration-500"
+          style={{
+            backgroundColor: summaryCompact
+              ? 'color-mix(in srgb, var(--surface-color) 92%, transparent)'
+              : 'transparent',
+          }}
+        >
+          <BudgetSummary
+            budget={budget}
+            spent={spent}
+            ratio={ratio}
+            status={status}
+            onBudgetChange={actions.setBudget}
+            compact={summaryCompact}
+          />
+        </div>
 
         <GroceryList
           items={items}

@@ -147,10 +147,18 @@ export default function App() {
   }, [actions, showToast])
 
   // Shrink the sticky summary once the list is scrolled, expand again near
-  // the top — with a little hysteresis so it doesn't flicker mid-scroll.
+  // the top. Wide hysteresis plus an rAF throttle keeps this from
+  // oscillating: since the summary itself resizes while it's still in
+  // normal flow, animating it near the toggle point can nudge scrollTop
+  // (via the browser's scroll anchoring) right back across the threshold.
+  const scrollRafRef = useRef(null)
   const handleMainScroll = useCallback(() => {
-    const top = mainRef.current?.scrollTop ?? 0
-    setSummaryCompact((prev) => (prev ? top > 12 : top > 48))
+    if (scrollRafRef.current) return
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null
+      const top = mainRef.current?.scrollTop ?? 0
+      setSummaryCompact((prev) => (prev ? top > 24 : top > 96))
+    })
   }, [])
 
   if (!budget) {
@@ -181,13 +189,19 @@ export default function App() {
         hasBudget={Boolean(budget)}
       />
 
-      <main ref={mainRef} onScroll={handleMainScroll} className="flex-1 overflow-y-auto">
+      <main
+        ref={mainRef}
+        onScroll={handleMainScroll}
+        className="flex-1 overflow-y-auto"
+        style={{ overflowAnchor: 'none' }}
+      >
         <div
           className="sticky top-0 z-10 backdrop-blur transition-colors duration-500"
           style={{
             backgroundColor: summaryCompact
               ? 'color-mix(in srgb, var(--surface-color) 92%, transparent)'
               : 'transparent',
+            overflowAnchor: 'none',
           }}
         >
           <BudgetSummary

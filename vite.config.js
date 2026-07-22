@@ -3,13 +3,19 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// GitHub Pages serves project sites from /<repo-name>/, not the domain root,
-// so the build needs a matching base path. Set via the deploy workflow only.
-const base = process.env.GITHUB_PAGES === 'true' ? '/UnderBudget/' : '/'
+// GitHub Pages serves project sites from /<repo-name>/, not the domain root.
+// The marketing landing page (landing/index.html) occupies the site root, so
+// the app itself is built one level down at /<repo-name>/app/ — the deploy
+// workflow copies the landing page into the same dist/ output alongside it.
+const onPages = process.env.GITHUB_PAGES === 'true'
+const base = onPages ? '/UnderBudget/app/' : '/'
 
 // https://vite.dev/config/
 export default defineConfig({
   base,
+  build: {
+    outDir: onPages ? 'dist/app' : 'dist',
+  },
   plugins: [
     react(),
     tailwindcss(),

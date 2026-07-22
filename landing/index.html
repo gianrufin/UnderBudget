@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>UnderBudget — Know What's Left Before You Reach Checkout</title>
+<meta name="description" content="UnderBudget is a fast, mobile-first budget calculator for grocery runs, trips, and fixed-budget shopping. Set a limit, add items with a persistent keypad, and see your total update in real time, before you reach the register." />
+<meta name="theme-color" content="#0ea472" />
+<link rel="icon" type="image/svg+xml" href="app/icon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="app/favicon-32.png" />
+<link rel="apple-touch-icon" href="app/apple-touch-icon.png" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="UnderBudget — Know What's Left Before You Reach Checkout" />
+<meta property="og:description" content="A fast, mobile-first budget calculator for grocery runs, trips, and fixed-budget shopping." />
+<meta property="og:image" content="app/icon-512.png" />
+<meta name="twitter:card" content="summary" />
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7faf8;
+    --bg-2: #fdfbf3;
+    --surface: #ffffff;
+    --surface-2: #f3f6f4;
+    --border: #e2e8e4;
+    --text: #10241b;
+    --muted: #5b6b63;
+    --green: #0ea472;
+    --green-strong: #0c8a60;
+    --amber: #b9820b;
+    --orange: #c2570f;
+    --red: #c23a2f;
+    --shadow: 0 1px 2px rgba(16, 36, 27, 0.04), 0 8px 24px rgba(16, 36, 27, 0.06);
+    --radius: 14px;
+    --radius-sm: 10px;
+    --max: 1080px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #050505;
+      --bg-2: #070a08;
+      --surface: #0b0f0d;
+      --surface-2: #0f1512;
+      --border: #1c2620;
+      --text: #f3f6f4;
+      --muted: #93a39a;
+      --green: #22c98a;
+      --green-strong: #34d38f;
+      --amber: #e0b429;
+      --orange: #f2892c;
+      --red: #f2504f;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 30px rgba(0, 0, 0, 0.45);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  img, svg { display: block; max-width: 100%; }
+  a { color: inherit; text-decoration: none; }
+  .nav-links a { text-decoration: none; }
+  .nav-links a:hover { text-decoration: underline; }
+  .container { max-width: var(--max); margin: 0 auto; padding: 0 20px; }
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Nav ---------- */
+  nav.site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    max-width: var(--max);
+    margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+  .brand svg { color: var(--green); }
+  .nav-links { display: none; gap: 28px; font-size: 14px; color: var(--muted); }
+  .nav-links a:hover { color: var(--text); }
+  @media (min-width: 800px) {
+    .nav-links { display: flex; }
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--green); color: #04160f; }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-secondary { background: transparent; color: var(--text); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--surface-2); }
+  .btn-sm { padding: 9px 16px; font-size: 13.5px; }
+
+  /* ---------- Sections ---------- */
+  section { padding: 72px 0; }
+  .eyebrow {
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--green);
+    margin: 0 0 12px;
+  }
+  h1, h2, h3 { font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+  h2 { font-size: clamp(26px, 4.5vw, 36px); }
+  p { color: var(--muted); margin: 0; }
+  .lede { font-size: 17px; max-width: 60ch; }
+  .center { text-align: center; margin-left: auto; margin-right: auto; }
+
+  /* ---------- Hero ---------- */
+  .hero { padding: 56px 0 48px; }
+  .hero-grid { display: grid; gap: 40px; align-items: center; }
+  @media (min-width: 900px) {
+    .hero-grid { grid-template-columns: 1.05fr 0.95fr; gap: 56px; }
+  }
+  .hero h1 { font-size: clamp(34px, 6vw, 52px); line-height: 1.06; }
+  .hero .lede { margin-top: 16px; font-size: 18px; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  .reassurance { margin-top: 16px; font-size: 13px; color: var(--muted); }
+
+  /* ---------- Phone mock ---------- */
+  .phone {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: 18px;
+    max-width: 340px;
+    margin: 0 auto;
+  }
+  .phone-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .phone-head .brand { font-size: 13px; }
+  .phone-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+  .mock-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+  .mock-total { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
+  .mock-sub { font-size: 13px; margin-top: 4px; font-weight: 600; }
+  .mock-bar-track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 14px; }
+  .mock-bar-fill { height: 100%; border-radius: 999px; }
+  .mock-pct { font-size: 12px; color: var(--muted); margin-top: 6px; text-align: right; }
+  .mock--calm .mock-sub { color: var(--green-strong); }
+  .mock--calm .mock-bar-fill { width: 21%; background: var(--green); }
+  .mock--warm .mock-sub { color: var(--amber); }
+  .mock--warm .mock-bar-fill { width: 68%; background: var(--amber); }
+  .mock--hot .mock-sub { color: var(--red); }
+  .mock--hot .mock-bar-fill { width: 100%; background: var(--red); }
+  @media (prefers-reduced-motion: no-preference) {
+    .mock--hot .mock-glow { animation: pulseGlow 2.4s ease-in-out infinite; }
+  }
+  @keyframes pulseGlow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+  .mock-items { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .mock-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; background: var(--surface-2); }
+  .mock-item span:first-child { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mock-item span:last-child { font-weight: 700; flex-shrink: 0; }
+  .mock-keypad { margin-top: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .mock-key { border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2); text-align: center; padding: 10px 0; font-size: 13px; font-weight: 600; }
+  .mock-key--wide { grid-column: span 2; background: var(--green); color: #04160f; border-color: transparent; }
+
+  /* ---------- Problem ---------- */
+  .problem-list { margin-top: 28px; display: grid; gap: 14px; max-width: 640px; }
+  @media (min-width: 700px) { .problem-list { grid-template-columns: 1fr 1fr; } }
+  .problem-item { display: flex; gap: 10px; font-size: 14.5px; color: var(--muted); }
+  .problem-item::before { content: "—"; color: var(--border); flex-shrink: 0; }
+
+  /* ---------- Steps ---------- */
+  .steps { margin-top: 36px; display: grid; gap: 20px; }
+  @media (min-width: 800px) { .steps { grid-template-columns: repeat(4, 1fr); gap: 18px; } }
+  .step {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    background: var(--surface);
+  }
+  .step-num { font-size: 12px; font-weight: 700; color: var(--green); margin-bottom: 10px; }
+  .step h3 { font-size: 16px; }
+  .step p { margin-top: 8px; font-size: 13.5px; }
+  .step .outcome { margin-top: 10px; font-size: 12.5px; color: var(--text); font-weight: 600; }
+
+  /* ---------- Feature split (calculator / live budget) ---------- */
+  .split {
+    display: grid;
+    gap: 36px;
+    align-items: center;
+  }
+  @media (min-width: 900px) {
+    .split { grid-template-columns: 1fr 1fr; gap: 56px; }
+    .split.reverse .split-copy { order: 2; }
+    .split.reverse .split-visual { order: 1; }
+  }
+  .split-copy h2 { margin-bottom: 14px; }
+  .benefit-list { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .benefit-list li { list-style: none; display: flex; gap: 10px; font-size: 14.5px; color: var(--text); }
+  .benefit-list li::before { content: "✓"; color: var(--green); font-weight: 700; flex-shrink: 0; }
+  .caption { margin-top: 14px; font-size: 12.5px; color: var(--muted); text-align: center; }
+
+  /* ---------- Feature grid ---------- */
+  .feature-grid { margin-top: 36px; display: grid; gap: 16px; }
+  @media (min-width: 640px) { .feature-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px) { .feature-grid { grid-template-columns: repeat(3, 1fr); } }
+  .feature-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    background: var(--surface);
+  }
+  .feature-card h3 { font-size: 15.5px; }
+  .feature-card p { font-size: 13.5px; margin-top: 8px; }
+  .feature-card .use { margin-top: 10px; font-size: 12.5px; color: var(--muted); font-style: italic; }
+
+  /* ---------- Benefit checklist section ---------- */
+  .checklist { margin-top: 28px; display: grid; gap: 12px; max-width: 640px; }
+  @media (min-width: 700px) { .checklist { grid-template-columns: 1fr 1fr; } }
+  .checklist li { list-style: none; display: flex; gap: 10px; font-size: 14.5px; }
+  .checklist li::before { content: "✓"; color: var(--green); font-weight: 700; flex-shrink: 0; }
+
+  /* ---------- Mobile section ---------- */
+  .mobile-points { margin-top: 24px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr; max-width: 560px; }
+  .mobile-points span { display: block; font-size: 13px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+
+  /* ---------- Beyond groceries ---------- */
+  .chip-row { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; font-size: 13.5px; color: var(--muted); background: var(--surface); }
+
+  /* ---------- Privacy ---------- */
+  .privacy-card {
+    margin-top: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    background: var(--surface);
+    max-width: 620px;
+  }
+  .privacy-card p + p { margin-top: 10px; }
+
+  /* ---------- Closing ---------- */
+  .closing {
+    background: linear-gradient(180deg, var(--bg), var(--bg-2));
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .closing h2 { font-size: clamp(28px, 5vw, 40px); max-width: 20ch; margin: 0 auto; }
+  .closing .lede { margin: 16px auto 0; }
+  .closing .hero-actions { justify-content: center; margin-top: 26px; }
+  .brand-line { margin-top: 26px; font-size: 13px; color: var(--muted); }
+
+  footer { padding: 32px 0 calc(32px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+  .footer-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-size: 12.5px; color: var(--muted); }
+
+  /* ---------- Sticky mobile CTA ---------- */
+  .sticky-cta {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 50;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    display: flex;
+  }
+  .sticky-cta .btn { width: 100%; }
+  @media (min-width: 800px) { .sticky-cta { display: none; } }
+  body { padding-bottom: 76px; }
+  @media (min-width: 800px) { body { padding-bottom: 0; } }
+
+  section#hero, section#problem, section#intro { scroll-margin-top: 64px; }
+  section { scroll-margin-top: 64px; }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-row">
+    <a class="brand" href="#hero" aria-label="UnderBudget home">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h16l-1.5 10.5a2 2 0 0 1-2 1.5H7.5a2 2 0 0 1-2-1.5L4 7Z" />
+        <path d="M8 7V6a4 4 0 0 1 8 0v1" />
+      </svg>
+      UnderBudget
+    </a>
+    <div class="nav-links">
+      <a href="#how-it-works">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#why">Why UnderBudget</a>
+    </div>
+    <a class="btn btn-primary btn-sm" href="app/">Try UnderBudget</a>
+  </div>
+</nav>
+
+<section id="hero" class="hero">
+  <div class="container hero-grid">
+    <div>
+      <p class="eyebrow">A calculator built for the aisle, not the spreadsheet</p>
+      <h1>Know what's left.<br />Before you reach checkout.</h1>
+      <p class="lede">UnderBudget keeps your budget, your list, and your prices on one screen, so every item you add updates exactly where you stand.</p>
+      <p class="lede" style="margin-top:14px;">No more adding up a cart in your head or switching between a calculator and a notes app. Set a limit, add items as you go, and watch your total and your room to spend update together, in real time.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="app/">Try UnderBudget</a>
+        <a class="btn btn-secondary" href="#how-it-works">See how it works</a>
+      </div>
+      <p class="reassurance">No account. No setup. Your list stays on your device.</p>
+    </div>
+    <div class="phone mock--calm">
+      <div class="phone-head">
+        <span class="brand"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16l-1.5 10.5a2 2 0 0 1-2 1.5H7.5a2 2 0 0 1-2-1.5L4 7Z" /><path d="M8 7V6a4 4 0 0 1 8 0v1" /></svg>UnderBudget</span>
+        <span class="phone-dot"></span>
+      </div>
+      <p class="mock-label">Total amount</p>
+      <p class="mock-total tabular">₱615.00</p>
+      <p class="mock-sub tabular">₱2,385.00 remaining</p>
+      <div class="mock-bar-track"><div class="mock-bar-fill"></div></div>
+      <p class="mock-pct tabular">21% used</p>
+      <div class="mock-items">
+        <div class="mock-item"><span>Rice (5kg)</span><span class="tabular">₱225.00</span></div>
+        <div class="mock-item"><span>Cooking oil</span><span class="tabular">₱120.00</span></div>
+        <div class="mock-item"><span>Eggs</span><span class="tabular">₱85.00</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="problem">
+  <div class="container">
+    <p class="eyebrow">Sound familiar</p>
+    <h2 style="max-width:20ch;">Shopping within a budget shouldn't take this much math</h2>
+    <p class="lede" style="margin-top:14px;">You start with a number in your head. Then the calculator app. Then a note with a running list. Then you lose track of which price you already added.</p>
+    <p class="lede" style="margin-top:10px;">A few items in, you're recalculating from scratch because you swapped one thing for another. By the time you reach the register, you're just hoping the total comes in under what you meant to spend.</p>
+    <div class="problem-list">
+      <div class="problem-item">Switching between a calculator and a notes app</div>
+      <div class="problem-item">Forgetting which prices you already added</div>
+      <div class="problem-item">Losing track of quantities</div>
+      <div class="problem-item">Recalculating after swapping one item</div>
+      <div class="problem-item">Finding out the total is too high at checkout</div>
+      <div class="problem-item">Not knowing what to remove to bring it back down</div>
+    </div>
+  </div>
+</section>
+
+<section id="intro">
+  <div class="container" style="max-width: 760px;">
+    <p class="eyebrow center">One screen, not three apps</p>
+    <h2 class="center">Your budget, your list, and your prices, together</h2>
+    <p class="lede center" style="margin-top:14px;">UnderBudget puts your spending limit, your item list, and a fast entry keypad on the same screen. Add a name, punch in a price, set a quantity, and your total, your remaining balance, and your progress update immediately, before you move to the next item.</p>
+    <p class="lede center" style="margin-top:14px; font-weight:600; color:var(--text);">See the effect of every item the moment you add it, not at the register.</p>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <div class="container">
+    <p class="eyebrow">How it works</p>
+    <h2>From spending limit to checkout, in four steps</h2>
+    <div class="steps">
+      <div class="step">
+        <p class="step-num">01</p>
+        <h3>Set your spending limit</h3>
+        <p>Enter the amount you have to work with before you start.</p>
+        <p class="outcome">Everything after this is measured against a number you chose.</p>
+      </div>
+      <div class="step">
+        <p class="step-num">02</p>
+        <h3>Add items as you shop</h3>
+        <p>Name it, key in the price, adjust the quantity if you need more than one.</p>
+        <p class="outcome">Your list builds itself as you go, no separate note required.</p>
+      </div>
+      <div class="step">
+        <p class="step-num">03</p>
+        <h3>Watch your total update</h3>
+        <p>The total, what's left, and your percentage used shift the moment you tap Add.</p>
+        <p class="outcome">You always know where you stand, not just at the end.</p>
+      </div>
+      <div class="step">
+        <p class="step-num">04</p>
+        <h3>Adjust before you check out</h3>
+        <p>Edit a price, remove something, mark items as already in your cart.</p>
+        <p class="outcome">You make the call while you can still change it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="container split">
+    <div class="split-copy">
+      <p class="eyebrow">A keypad that never leaves the screen</p>
+      <h2>Fast price entry, without switching apps</h2>
+      <p class="lede" style="margin-top:14px;">UnderBudget keeps a full number pad docked at the bottom of the screen the entire time you're adding items. Type a name, tap the price field, and the same keypad enters the price, then the quantity, without ever handing control to your phone's keyboard.</p>
+      <ul class="benefit-list">
+        <li>One thumb, one screen, no app switching</li>
+        <li>Add a price and move straight to the next item</li>
+        <li>Your hands stay in one place the whole time you shop</li>
+      </ul>
+      <div class="hero-actions" style="margin-top:22px;">
+        <a class="btn btn-primary btn-sm" href="app/">Try adding your first item</a>
+      </div>
+    </div>
+    <div class="split-visual">
+      <div class="phone mock--calm">
+        <div class="phone-head">
+          <span class="mock-label">Price (₱)</span>
+          <span class="phone-dot"></span>
+        </div>
+        <p class="mock-total tabular" style="font-size:26px;">225</p>
+        <div class="mock-keypad">
+          <div class="mock-key">7</div><div class="mock-key">8</div><div class="mock-key">9</div><div class="mock-key">⌫</div>
+          <div class="mock-key">4</div><div class="mock-key">5</div><div class="mock-key">6</div><div class="mock-key">C</div>
+          <div class="mock-key">1</div><div class="mock-key">2</div><div class="mock-key">3</div><div class="mock-key">.</div>
+          <div class="mock-key">00</div><div class="mock-key">0</div><div class="mock-key mock-key--wide">Add</div>
+        </div>
+      </div>
+      <p class="caption">Price in, total updated, ready for the next item.</p>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="container split reverse">
+    <div class="split-copy">
+      <p class="eyebrow">See where you stand, not just where you started</p>
+      <h2>Live budget awareness</h2>
+      <p class="lede" style="margin-top:14px;">Your total spent, what's left, and your percentage used are always visible, not buried in a summary you have to tap into. As you get closer to your limit, the screen itself shifts, from a calm, comfortable tone to a warmer one as you approach the number you set.</p>
+      <p class="lede" style="margin-top:14px; font-weight:600; color:var(--text);">You get the signal to slow down while you're still deciding, not after you've already paid.</p>
+    </div>
+    <div class="split-visual">
+      <div class="phone mock--hot">
+        <div class="phone-head">
+          <span class="brand"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16l-1.5 10.5a2 2 0 0 1-2 1.5H7.5a2 2 0 0 1-2-1.5L4 7Z" /><path d="M8 7V6a4 4 0 0 1 8 0v1" /></svg>UnderBudget</span>
+          <span class="phone-dot"></span>
+        </div>
+        <p class="mock-label">Total amount</p>
+        <p class="mock-total tabular mock-glow">₱3,200.00</p>
+        <p class="mock-sub tabular">₱200.00 over budget</p>
+        <div class="mock-bar-track"><div class="mock-bar-fill"></div></div>
+        <p class="mock-pct tabular">107% used</p>
+      </div>
+      <p class="caption">Comfortable, on track, or time to slow down. Always visible, never buried.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <p class="eyebrow">Everything else, in one screen</p>
+    <h2>Built around real shopping decisions</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>Mark items as purchased</h3>
+        <p>Distinguish what's in your cart from what's still on your list.</p>
+        <p class="use">Glance down and know what you still need to grab.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Edit, duplicate, and undo</h3>
+        <p>Change a price, duplicate a repeat purchase, or undo a delete without starting over.</p>
+        <p class="use">Swapped brands? Update the price in place.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Sort your list your way</h3>
+        <p>Order items by when you added them, by price, or alphabetically.</p>
+        <p class="use">Sort by price to see what's actually driving your total.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Start fresh, keep your budget</h3>
+        <p>Clear your list for a new shopping trip without resetting the number you set.</p>
+        <p class="use">Same weekly budget, new week's list.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Saved automatically</h3>
+        <p>Your list and budget are right where you left them next time you open the app.</p>
+        <p class="use">Close the tab mid-shop, come back, nothing is lost.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Install it like an app</h3>
+        <p>Add it to your home screen and it works like any other app, including with a spotty signal.</p>
+        <p class="use">Open it as fast as you'd open your calculator.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <p class="eyebrow">What actually changes</p>
+    <h2>What you get from using it</h2>
+    <ul class="checklist">
+      <li>Arrive at checkout with a number you already expected</li>
+      <li>See which items are actually driving your total</li>
+      <li>Adjust your list while you can still change it</li>
+      <li>Keep prices and quantities together, no double math</li>
+      <li>Use one screen instead of switching between apps</li>
+      <li>Start a new trip without losing track of your budget</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <p class="eyebrow">Built for a cart in one hand, a phone in the other</p>
+    <h2 style="max-width:22ch;">Designed for the store, not the desk</h2>
+    <p class="lede" style="margin-top:14px;">UnderBudget is designed to be used while you're actually shopping, not reviewed later at a desk. The keypad stays docked within thumb's reach. Buttons are sized for quick taps, not careful aim. The layout accounts for your phone's screen edges, so nothing important sits where your thumb already is.</p>
+    <p class="lede" style="margin-top:10px;">It works in bright store lighting and dim ones, in light mode or a true dark mode. And because it installs like an app, opening it takes the same one tap as opening your calculator.</p>
+    <div class="mobile-points">
+      <span>Mobile-first layout</span>
+      <span>Persistent keypad</span>
+      <span>Large tap targets</span>
+      <span>Light &amp; dark themes</span>
+      <span>Safe-area aware</span>
+      <span>Installable app</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <p class="eyebrow">Beyond groceries</p>
+    <h2>Built for the grocery run, useful anywhere there's a limit</h2>
+    <p class="lede" style="margin-top:14px;">Groceries are where UnderBudget earns its keep, but the same screen works anywhere you're working against a fixed number.</p>
+    <div class="chip-row">
+      <span class="chip">Trip expenses</span>
+      <span class="chip">Event supplies</span>
+      <span class="chip">Home projects</span>
+      <span class="chip">School requirements</span>
+      <span class="chip">Gift shopping</span>
+      <span class="chip">Meal planning</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <p class="eyebrow">Your list stays yours</p>
+    <h2 style="max-width:18ch;">Local by default</h2>
+    <div class="privacy-card">
+      <p>UnderBudget doesn't ask for an account, an email, or a login. Your budget and your list are saved directly on your device, and they're there the next time you open the app.</p>
+      <p>Nothing you enter goes anywhere else. It's simply yours, on your phone.</p>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="container">
+    <h2>Your budget shouldn't be a surprise at checkout.</h2>
+    <p class="lede center">Set a limit before your next shopping trip, and know exactly where you stand the whole way through it.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="app/">Try UnderBudget</a>
+      <a class="btn btn-secondary" href="app/">Start a new budget</a>
+    </div>
+    <p class="brand-line">UnderBudget. Know what's left, while you still have time to change it.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="container footer-row">
+    <span>UnderBudget</span>
+    <span>Stay aware. Spend within your limit.</span>
+  </div>
+</footer>
+
+<div class="sticky-cta">
+  <a class="btn btn-primary" href="app/">Try UnderBudget</a>
+</div>
+
+</body>
+</html>

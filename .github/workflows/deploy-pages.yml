@@ -27,6 +27,8 @@ jobs:
       - run: npm run build
         env:
           GITHUB_PAGES: 'true'
+      - name: Add marketing landing page at the site root
+        run: cp landing/index.html dist/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

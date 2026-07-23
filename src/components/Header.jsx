@@ -14,6 +14,7 @@ export default function Header({
   onUndo,
   canUndo,
   hasBudget,
+  onOpenCurrency,
 }) {
   return (
     <header
@@ -36,6 +37,7 @@ export default function Header({
           onUndo={onUndo}
           canUndo={canUndo}
           hasBudget={hasBudget}
+          onOpenCurrency={onOpenCurrency}
         />
       </div>
     </header>

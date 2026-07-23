@@ -3,23 +3,39 @@ import { useGroceryStore } from './hooks/useGroceryStore'
 import { useTheme } from './hooks/useTheme'
 import { useBudgetColors } from './hooks/useBudgetColors'
 import { toNumber } from './lib/format'
+import { statusChangeHaptic } from './lib/haptics'
+import { CurrencyProvider } from './context/CurrencyContext'
 import AppShell from './components/AppShell'
 import Header from './components/Header'
 import BudgetSetup from './components/BudgetSetup'
 import BudgetSummary from './components/BudgetSummary'
+import AllDoneBanner from './components/AllDoneBanner'
 import GroceryList from './components/GroceryList'
 import QuickAddPanel from './components/QuickAddPanel'
 import PersistentNumberPad from './components/PersistentNumberPad'
 import ClearListDialog from './components/ClearListDialog'
+import CurrencyPicker from './components/CurrencyPicker'
 import ToastNotification from './components/ToastNotification'
 
 export default function App() {
-  const { budget, items, theme, sortMode, spent, ratio, actions } = useGroceryStore()
+  const {
+    budget,
+    items,
+    theme,
+    sortMode,
+    currency,
+    hideCompleted,
+    recentPrices,
+    spent,
+    ratio,
+    actions,
+  } = useGroceryStore()
   const isDark = useTheme(theme)
   const { status } = useBudgetColors(ratio, isDark)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [clearOpen, setClearOpen] = useState(false)
+  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [toast, setToast] = useState(null)
   const [lastAddedId, setLastAddedId] = useState(null)
   const [summaryCompact, setSummaryCompact] = useState(false)
@@ -146,6 +162,18 @@ export default function App() {
     showToast('Last item removed')
   }, [actions, showToast])
 
+  // A distinct buzz whenever the budget status actually crosses into a new
+  // tier (not on every render), so it registers even if you're not looking.
+  const prevStatusRef = useRef(status)
+  useEffect(() => {
+    if (prevStatusRef.current !== status) {
+      statusChangeHaptic()
+      prevStatusRef.current = status
+    }
+  }, [status])
+
+  const allPurchased = items.length > 0 && items.every((it) => it.purchased)
+
   // Shrink the sticky summary once the list is scrolled, expand again near
   // the top. Wide hysteresis plus an rAF throttle keeps this from
   // oscillating: since the summary itself resizes while it's still in
@@ -161,135 +189,159 @@ export default function App() {
     })
   }, [])
 
+  const handlePickRecentPrice = useCallback((recentPrice) => {
+    setPrice(String(recentPrice))
+    setActiveInput('price')
+    priceRef.current?.focus()
+  }, [])
+
   if (!budget) {
     return (
-      <AppShell>
-        <BudgetSetup onSubmit={actions.setBudget} />
-      </AppShell>
+      <CurrencyProvider currencyCode={currency}>
+        <AppShell>
+          <BudgetSetup onSubmit={actions.setBudget} onCurrencyChange={actions.setCurrency} />
+        </AppShell>
+      </CurrencyProvider>
     )
   }
 
   return (
-    <AppShell>
-      <Header
-        theme={theme}
-        onThemeChange={actions.setTheme}
-        menuOpen={menuOpen}
-        onMenuOpen={() => setMenuOpen(true)}
-        onMenuClose={() => setMenuOpen(false)}
-        onResetBudget={actions.resetBudget}
-        onNewListKeepBudget={() => {
-          actions.newList(true)
-          resetQuickAdd()
-          showToast('Started a new list')
-        }}
-        onClearAll={() => setClearOpen(true)}
-        onUndo={handleUndoLast}
-        canUndo={items.length > 0}
-        hasBudget={Boolean(budget)}
-      />
-
-      <main
-        ref={mainRef}
-        onScroll={handleMainScroll}
-        className="flex-1 overflow-y-auto"
-        style={{ overflowAnchor: 'none' }}
-      >
-        <div
-          className="sticky top-0 z-10 backdrop-blur transition-colors duration-500"
-          style={{
-            backgroundColor: summaryCompact
-              ? 'color-mix(in srgb, var(--surface-color) 92%, transparent)'
-              : 'transparent',
-            overflowAnchor: 'none',
+    <CurrencyProvider currencyCode={currency}>
+      <AppShell>
+        <Header
+          theme={theme}
+          onThemeChange={actions.setTheme}
+          menuOpen={menuOpen}
+          onMenuOpen={() => setMenuOpen(true)}
+          onMenuClose={() => setMenuOpen(false)}
+          onResetBudget={actions.resetBudget}
+          onNewListKeepBudget={() => {
+            actions.newList(true)
+            resetQuickAdd()
+            showToast('Started a new list')
           }}
-        >
-          <BudgetSummary
-            budget={budget}
-            spent={spent}
-            ratio={ratio}
-            status={status}
-            onBudgetChange={actions.setBudget}
-            compact={summaryCompact}
-          />
-        </div>
-
-        <GroceryList
-          items={items}
-          sortMode={sortMode}
-          onSortChange={actions.setSortMode}
-          lastAddedId={lastAddedId}
-          onToggle={actions.togglePurchased}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onDuplicate={actions.duplicateItem}
           onClearAll={() => setClearOpen(true)}
+          onUndo={handleUndoLast}
+          canUndo={items.length > 0}
+          hasBudget={Boolean(budget)}
+          onOpenCurrency={() => setCurrencyOpen(true)}
         />
-      </main>
 
-      {editingId && (
-        <div
-          className="flex items-center justify-between border-t px-4 py-1.5 text-xs transition-colors duration-500"
-          style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--glow-color)' }}
+        <main
+          ref={mainRef}
+          onScroll={handleMainScroll}
+          className="flex-1 overflow-y-auto"
+          style={{ overflowAnchor: 'none' }}
         >
-          <span className="opacity-80">Editing item</span>
-          <button type="button" className="font-semibold underline" onClick={resetQuickAdd}>
-            Cancel
-          </button>
-        </div>
-      )}
+          <div
+            className="sticky top-0 z-10 backdrop-blur transition-colors duration-500"
+            style={{
+              backgroundColor: summaryCompact
+                ? 'color-mix(in srgb, var(--surface-color) 92%, transparent)'
+                : 'transparent',
+              overflowAnchor: 'none',
+            }}
+          >
+            <BudgetSummary
+              budget={budget}
+              spent={spent}
+              ratio={ratio}
+              status={status}
+              onBudgetChange={actions.setBudget}
+              compact={summaryCompact}
+            />
+          </div>
 
-      <QuickAddPanel
-        nameRef={nameRef}
-        priceRef={priceRef}
-        qtyRef={qtyRef}
-        itemName={itemName}
-        price={price}
-        quantity={quantity}
-        activeInput={activeInput}
-        onNameChange={setItemName}
-        onNameSubmit={() => {
-          setActiveInput('price')
-          priceRef.current?.focus()
-        }}
-        onFocusField={(field) => {
-          setActiveInput(field)
-          if (field === 'quantity' && quantity === '1') setQuantity('')
-        }}
-        onAdd={handleAdd}
-        canAdd={canAdd}
-        editing={Boolean(editingId)}
-      />
+          {allPurchased && !summaryCompact && <AllDoneBanner spent={spent} budget={budget} />}
 
-      <PersistentNumberPad
-        onDigit={appendDigit}
-        onDoubleZero={appendDoubleZero}
-        onDecimal={appendDecimal}
-        onBackspace={backspace}
-        onClear={clearActive}
-        onConfirm={handleAdd}
-        confirmLabel={editingId ? 'Save' : 'Add'}
-        confirmDisabled={!canAdd}
-      />
+          <GroceryList
+            items={items}
+            sortMode={sortMode}
+            onSortChange={actions.setSortMode}
+            hideCompleted={hideCompleted}
+            onToggleHideCompleted={() => actions.setHideCompleted((v) => !v)}
+            lastAddedId={lastAddedId}
+            onToggle={actions.togglePurchased}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onDuplicate={actions.duplicateItem}
+            onClearAll={() => setClearOpen(true)}
+          />
+        </main>
 
-      <ClearListDialog
-        open={clearOpen}
-        onCancel={() => setClearOpen(false)}
-        onConfirm={() => {
-          actions.clearItems()
-          setClearOpen(false)
-          showToast('List cleared')
-        }}
-      />
+        {editingId && (
+          <div
+            className="flex items-center justify-between border-t px-4 py-1.5 text-xs transition-colors duration-500"
+            style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--glow-color)' }}
+          >
+            <span className="opacity-80">Editing item</span>
+            <button type="button" className="font-semibold underline" onClick={resetQuickAdd}>
+              Cancel
+            </button>
+          </div>
+        )}
 
-      <ToastNotification
-        toast={toast}
-        onAction={() => {
-          toast?.onAction?.()
-          setToast(null)
-        }}
-        onDismiss={() => setToast(null)}
-      />
-    </AppShell>
+        <QuickAddPanel
+          nameRef={nameRef}
+          priceRef={priceRef}
+          qtyRef={qtyRef}
+          itemName={itemName}
+          price={price}
+          quantity={quantity}
+          activeInput={activeInput}
+          onNameChange={setItemName}
+          onNameSubmit={() => {
+            setActiveInput('price')
+            priceRef.current?.focus()
+          }}
+          onFocusField={(field) => {
+            setActiveInput(field)
+            if (field === 'quantity' && quantity === '1') setQuantity('')
+          }}
+          onAdd={handleAdd}
+          canAdd={canAdd}
+          editing={Boolean(editingId)}
+          recentPrices={recentPrices}
+          onPickRecentPrice={handlePickRecentPrice}
+        />
+
+        <PersistentNumberPad
+          onDigit={appendDigit}
+          onDoubleZero={appendDoubleZero}
+          onDecimal={appendDecimal}
+          onBackspace={backspace}
+          onClear={clearActive}
+          onConfirm={handleAdd}
+          confirmLabel={editingId ? 'Save' : 'Add'}
+          confirmDisabled={!canAdd}
+        />
+
+        <ClearListDialog
+          open={clearOpen}
+          onCancel={() => setClearOpen(false)}
+          onConfirm={() => {
+            actions.clearItems()
+            setClearOpen(false)
+            showToast('List cleared')
+          }}
+        />
+
+        <CurrencyPicker
+          open={currencyOpen}
+          currency={currency}
+          onSelect={actions.setCurrency}
+          onClose={() => setCurrencyOpen(false)}
+        />
+
+        <ToastNotification
+          toast={toast}
+          onAction={() => {
+            toast?.onAction?.()
+            setToast(null)
+          }}
+          onDismiss={() => setToast(null)}
+        />
+      </AppShell>
+    </CurrencyProvider>
   )
 }

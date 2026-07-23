@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react'
 import ItemNameInput from './ItemNameInput'
 import PriceDisplay from './PriceDisplay'
 import QuantityInput from './QuantityInput'
+import RecentPriceChips from './RecentPriceChips'
 
 export default function QuickAddPanel({
   nameRef,
@@ -17,10 +18,15 @@ export default function QuickAddPanel({
   onAdd,
   canAdd,
   editing,
+  recentPrices,
+  onPickRecentPrice,
 }) {
+  const showRecent = !editing && activeInput === 'price' && price === '' && recentPrices?.length > 0
+
   return (
-    <div className="border-t px-3 pb-2 pt-3 transition-colors duration-500" style={{ borderColor: 'var(--border-color)' }}>
-      <div className="flex items-end gap-2">
+    <div className="border-t transition-colors duration-500" style={{ borderColor: 'var(--border-color)' }}>
+      {showRecent && <RecentPriceChips prices={recentPrices} onPick={onPickRecentPrice} />}
+      <div className="flex items-end gap-2 px-3 pb-2 pt-3">
         <ItemNameInput ref={nameRef} value={itemName} onChange={onNameChange} onSubmit={onNameSubmit} />
         <PriceDisplay
           ref={priceRef}

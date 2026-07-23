@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Pencil } from 'lucide-react'
-import { formatCurrency } from '../lib/format'
+import { useCurrency } from '../context/CurrencyContext'
 import BudgetProgress from './BudgetProgress'
 import BudgetStatus from './BudgetStatus'
 import BudgetEditor from './BudgetEditor'
 
 export default function BudgetSummary({ budget, spent, ratio, status, onBudgetChange, compact = false }) {
+  const { fmt: formatCurrency } = useCurrency()
   const [editorOpen, setEditorOpen] = useState(false)
   const remaining = budget - spent
   const overBudget = remaining < 0

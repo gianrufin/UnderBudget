@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, EyeOff, Eye } from 'lucide-react'
 import GroceryItemRow from './GroceryItemRow'
 import EmptyState from './EmptyState'
 
@@ -21,6 +21,8 @@ export default function GroceryList({
   items,
   sortMode,
   onSortChange,
+  hideCompleted,
+  onToggleHideCompleted,
   lastAddedId,
   onToggle,
   onEdit,
@@ -28,32 +30,51 @@ export default function GroceryList({
   onDuplicate,
   onClearAll,
 }) {
-  const sorted = useMemo(() => [...items].sort(SORTERS[sortMode] ?? SORTERS.recent), [items, sortMode])
+  const visible = useMemo(
+    () => (hideCompleted ? items.filter((it) => !it.purchased) : items),
+    [items, hideCompleted],
+  )
+  const sorted = useMemo(() => [...visible].sort(SORTERS[sortMode] ?? SORTERS.recent), [visible, sortMode])
+  const purchasedCount = items.length - items.filter((it) => !it.purchased).length
 
   return (
     <section className="mx-4 mt-4 mb-2 flex-1" aria-label="Grocery items">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-y-1.5">
         <h2 className="text-xs font-semibold uppercase tracking-wide opacity-60">
-          Your items ({items.length})
+          Your items ({hideCompleted ? `${sorted.length} of ${items.length}` : items.length})
         </h2>
-        {items.length > 1 && (
-          <label className="flex items-center gap-1.5 text-xs opacity-70">
-            Sort:
-            <select
-              value={sortMode}
-              onChange={(e) => onSortChange(e.target.value)}
-              className="rounded-md border bg-transparent px-1.5 py-1 text-xs outline-none"
+        <div className="flex items-center gap-2">
+          {purchasedCount > 0 && (
+            <button
+              type="button"
+              onClick={onToggleHideCompleted}
+              aria-pressed={hideCompleted}
+              className="flex items-center gap-1 rounded-md border px-1.5 py-1 text-xs opacity-70 transition-colors"
               style={{ borderColor: 'var(--border-color)' }}
-              aria-label="Sort items"
             >
-              {Object.entries(SORT_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+              {hideCompleted ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+              {hideCompleted ? 'Show all' : 'Hide purchased'}
+            </button>
+          )}
+          {items.length > 1 && (
+            <label className="flex items-center gap-1.5 text-xs opacity-70">
+              Sort:
+              <select
+                value={sortMode}
+                onChange={(e) => onSortChange(e.target.value)}
+                className="rounded-md border bg-transparent px-1.5 py-1 text-xs outline-none"
+                style={{ borderColor: 'var(--border-color)' }}
+                aria-label="Sort items"
+              >
+                {Object.entries(SORT_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
       </div>
 
       <div
@@ -61,7 +82,7 @@ export default function GroceryList({
         style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}
       >
         {sorted.length === 0 ? (
-          <EmptyState />
+          <EmptyState hideCompleted={hideCompleted && items.length > 0} />
         ) : (
           <ul>
             {sorted.map((item) => (

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatCurrency } from '../lib/format'
+import { useCurrency } from '../context/CurrencyContext'
 
 /** Small inline editor for the budget amount, opened from the summary card. */
 export default function BudgetEditor({ open, budget, onClose, onSave }) {
+  const { fmt: formatCurrency, symbol } = useCurrency()
   const [value, setValue] = useState(String(budget ?? ''))
   const inputRef = useRef(null)
 
@@ -42,7 +43,7 @@ export default function BudgetEditor({ open, budget, onClose, onSave }) {
           Grocery budget
         </label>
         <div className="flex items-center gap-1 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--border-color)' }}>
-          <span className="opacity-60">₱</span>
+          <span className="opacity-60">{symbol}</span>
           <input
             id="budget-editor-input"
             ref={inputRef}

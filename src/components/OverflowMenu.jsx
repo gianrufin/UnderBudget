@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { Menu, RotateCcw, Trash2, ListRestart, Undo2 } from 'lucide-react'
+import { Menu, RotateCcw, Trash2, ListRestart, Undo2, Coins } from 'lucide-react'
+import { useCurrency } from '../context/CurrencyContext'
 
 /**
  * Secondary actions that don't need to live in the thumb zone: reset budget,
- * start a new list, clear all items, undo. A lightweight dropdown, not a
- * full-screen sheet.
+ * start a new list, clear all items, undo, change currency. A lightweight
+ * dropdown, not a full-screen sheet.
  */
 export default function OverflowMenu({
   open,
@@ -16,7 +17,9 @@ export default function OverflowMenu({
   onUndo,
   canUndo,
   hasBudget,
+  onOpenCurrency,
 }) {
+  const { currency } = useCurrency()
   const ref = useRef(null)
 
   useEffect(() => {
@@ -86,6 +89,14 @@ export default function OverflowMenu({
             label="Reset budget"
             onClick={() => {
               onResetBudget()
+              onClose()
+            }}
+          />
+          <MenuItem
+            icon={Coins}
+            label={`Currency (${currency})`}
+            onClick={() => {
+              onOpenCurrency()
               onClose()
             }}
           />

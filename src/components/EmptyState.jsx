@@ -1,6 +1,16 @@
-import { ShoppingBasket } from 'lucide-react'
+import { ShoppingBasket, CheckCheck } from 'lucide-react'
 
-export default function EmptyState() {
+export default function EmptyState({ hideCompleted = false }) {
+  if (hideCompleted) {
+    return (
+      <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+        <CheckCheck className="h-8 w-8 opacity-30" aria-hidden="true" />
+        <p className="text-sm font-medium opacity-70">Everything's purchased</p>
+        <p className="max-w-[26ch] text-xs opacity-50">Tap "Show all" to see the full list again.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
       <ShoppingBasket className="h-8 w-8 opacity-30" aria-hidden="true" />

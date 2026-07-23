@@ -6,6 +6,8 @@ const KEYS = {
   items: 'underbudget:items',
   theme: 'underbudget:theme',
   sortMode: 'underbudget:sortMode',
+  currency: 'underbudget:currency',
+  hideCompleted: 'underbudget:hideCompleted',
 }
 
 function makeId() {
@@ -21,6 +23,8 @@ export function useGroceryStore() {
   const [items, setItems] = useLocalStorage(KEYS.items, [])
   const [theme, setTheme] = useLocalStorage(KEYS.theme, 'system')
   const [sortMode, setSortMode] = useLocalStorage(KEYS.sortMode, 'recent')
+  const [currency, setCurrency] = useLocalStorage(KEYS.currency, 'PHP')
+  const [hideCompleted, setHideCompleted] = useLocalStorage(KEYS.hideCompleted, false)
 
   const lastAddedRef = useRef(null)
 
@@ -29,6 +33,20 @@ export function useGroceryStore() {
     [items],
   )
   const ratio = budget ? spent / budget : 0
+
+  // Most recently used unique prices, newest first — powers the recent-price
+  // shortcuts so re-buying the same item is a single tap.
+  const recentPrices = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    for (const item of [...items].sort((a, b) => b.createdAt - a.createdAt)) {
+      if (seen.has(item.price)) continue
+      seen.add(item.price)
+      out.push(item.price)
+      if (out.length >= 4) break
+    }
+    return out
+  }, [items])
 
   const setBudget = useCallback(
     (amount) => setBudgetRaw(amount > 0 ? amount : null),
@@ -123,6 +141,9 @@ export function useGroceryStore() {
     items,
     theme,
     sortMode,
+    currency,
+    hideCompleted,
+    recentPrices,
     spent,
     ratio,
     actions: {
@@ -139,6 +160,8 @@ export function useGroceryStore() {
       undoLastAdd,
       setTheme,
       setSortMode,
+      setCurrency,
+      setHideCompleted,
     },
   }
 }

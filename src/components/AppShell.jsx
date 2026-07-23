@@ -13,7 +13,7 @@ export default function AppShell({ children }) {
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden sm:py-4">
         <div
           className="flex h-full w-full flex-col overflow-hidden text-[15px] text-slate-900 transition-colors duration-500 motion-reduce:transition-none sm:rounded-3xl sm:border sm:shadow-xl dark:text-white"
-          style={{ borderColor: 'var(--border-color)' }}
+          style={{ borderColor: 'var(--border-color)', paddingTop: 'env(safe-area-inset-top)' }}
         >
           {children}
         </div>

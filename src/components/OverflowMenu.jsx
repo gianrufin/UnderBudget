@@ -100,6 +100,15 @@ export default function OverflowMenu({
               onClose()
             }}
           />
+          <a
+            href="https://instagram.com/gianrufin"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block border-t px-4 py-2.5 text-center text-xs opacity-50 transition-opacity hover:opacity-80"
+            style={{ borderColor: 'var(--border-color)' }}
+          >
+            Made by Gian Rufin
+          </a>
         </div>
       )}
     </div>

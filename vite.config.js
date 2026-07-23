@@ -44,7 +44,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,jpg,ico,webmanifest}'],
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.destination === 'font',

@@ -15,6 +15,7 @@ import QuickAddPanel from './components/QuickAddPanel'
 import PersistentNumberPad from './components/PersistentNumberPad'
 import ClearListDialog from './components/ClearListDialog'
 import CurrencyPicker from './components/CurrencyPicker'
+import SupportDialog from './components/SupportDialog'
 import ToastNotification from './components/ToastNotification'
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [clearOpen, setClearOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
   const [toast, setToast] = useState(null)
   const [lastAddedId, setLastAddedId] = useState(null)
   const [summaryCompact, setSummaryCompact] = useState(false)
@@ -225,6 +227,7 @@ export default function App() {
           canUndo={items.length > 0}
           hasBudget={Boolean(budget)}
           onOpenCurrency={() => setCurrencyOpen(true)}
+          onOpenSupport={() => setSupportOpen(true)}
         />
 
         <main
@@ -332,6 +335,8 @@ export default function App() {
           onSelect={actions.setCurrency}
           onClose={() => setCurrencyOpen(false)}
         />
+
+        <SupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
 
         <ToastNotification
           toast={toast}

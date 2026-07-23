@@ -35,7 +35,7 @@ export default function SupportDialog({ open, onClose }) {
           style={{ borderColor: 'var(--border-color)', backgroundColor: '#ffffff' }}
         >
           <img
-            src="/gcash-qr.jpg"
+            src={`${import.meta.env.BASE_URL}gcash-qr.jpg`}
             alt="GCash / InstaPay QR code to send a donation to Gian Rufin"
             className="w-full rounded-lg"
           />

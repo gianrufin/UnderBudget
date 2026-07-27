@@ -3,8 +3,8 @@ import { Pencil, Trash2, Check, Minus, Plus } from 'lucide-react'
 import { useCurrency } from '../context/CurrencyContext'
 import { tapHaptic } from '../lib/haptics'
 
-const SWIPE_TRIGGER = -64
-const SWIPE_MAX = -96
+const SWIPE_TRIGGER = 64
+const SWIPE_MAX = 96
 
 export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete, onAdjustQuantity }) {
   const { fmt: formatCurrency } = useCurrency()
@@ -13,6 +13,11 @@ export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
   const gestureRef = useRef(null)
+  // A drag that starts on a child button (the checkbox often sits right where
+  // the gesture begins) still ends with mousedown/up on that same button, so
+  // the browser fires a native click on it too. Swallow exactly one click
+  // whenever a horizontal drag happened, so it can't also toggle/act.
+  const suppressClickRef = useRef(false)
 
   function onPointerDown(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return
@@ -30,17 +35,32 @@ export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete
       if (g.axis === 'x') setDragging(true)
     }
     if (g.axis !== 'x') return
-    setDragX(Math.max(SWIPE_MAX, Math.min(0, dx)))
+    setDragX(Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, dx)))
   }
 
   function endGesture() {
     const g = gestureRef.current
     gestureRef.current = null
     setDragging(false)
-    if (g?.axis === 'x' && dragX <= SWIPE_TRIGGER) {
-      onDelete(item)
+    if (g?.axis === 'x') {
+      suppressClickRef.current = true
+      if (dragX <= -SWIPE_TRIGGER) {
+        tapHaptic(10)
+        onDelete(item)
+      } else if (dragX >= SWIPE_TRIGGER) {
+        tapHaptic(10)
+        onToggle(item.id)
+      }
     }
     setDragX(0)
+  }
+
+  function onClickCapture(e) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false
+      e.preventDefault()
+      e.stopPropagation()
+    }
   }
 
   return (
@@ -51,8 +71,16 @@ export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete
       style={{ borderColor: 'var(--border-color)' }}
     >
       <div
-        className="absolute inset-0 flex items-center justify-end gap-2 pr-5 text-white"
-        style={{ backgroundColor: 'var(--warning-color)' }}
+        className="absolute inset-0 flex items-center justify-start gap-2 pl-5 text-white transition-opacity"
+        style={{ backgroundColor: 'var(--accent-color)', opacity: dragX > 0 ? 1 : 0 }}
+        aria-hidden="true"
+      >
+        <Check className="h-4 w-4" />
+        <span className="text-xs font-semibold">{item.purchased ? 'Not purchased' : 'Purchased'}</span>
+      </div>
+      <div
+        className="absolute inset-0 flex items-center justify-end gap-2 pr-5 text-white transition-opacity"
+        style={{ backgroundColor: 'var(--warning-color)', opacity: dragX < 0 ? 1 : 0 }}
         aria-hidden="true"
       >
         <Trash2 className="h-4 w-4" />
@@ -67,6 +95,7 @@ export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete
           backgroundColor: 'var(--surface-color)',
           touchAction: 'pan-y',
         }}
+        onClickCapture={onClickCapture}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endGesture}
@@ -77,13 +106,13 @@ export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete
           onClick={() => onToggle(item.id)}
           aria-pressed={item.purchased}
           aria-label={item.purchased ? `Mark ${item.name} as not purchased` : `Mark ${item.name} as purchased`}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors active:scale-95"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors active:scale-95"
           style={{
             borderColor: item.purchased ? 'var(--accent-color)' : 'var(--border-color)',
             backgroundColor: item.purchased ? 'var(--accent-color)' : 'transparent',
           }}
         >
-          {item.purchased && <Check className="h-3.5 w-3.5 text-white" />}
+          {item.purchased && <Check className="h-4 w-4 text-white" />}
         </button>
 
         <div className="min-w-0 flex-1">

@@ -12,7 +12,7 @@ import Header from './components/Header'
 import BudgetSetup from './components/BudgetSetup'
 import BudgetSummary from './components/BudgetSummary'
 import AllDoneBanner from './components/AllDoneBanner'
-import PlanningList from './components/PlanningList'
+import PlanningScreen from './components/PlanningScreen'
 import GroceryList from './components/GroceryList'
 import QuickAddPanel from './components/QuickAddPanel'
 import PersistentNumberPad from './components/PersistentNumberPad'
@@ -58,7 +58,7 @@ export default function App() {
   const [clearOpen, setClearOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
-  const [planningExpanded, setPlanningExpanded] = useState(false)
+  const [planningOpen, setPlanningOpen] = useState(false)
   const [toast, setToast] = useState(null)
   const [lastAddedId, setLastAddedId] = useState(null)
   const [summaryCompact, setSummaryCompact] = useState(false)
@@ -287,6 +287,8 @@ export default function App() {
           canRestock={lastList.length > 0}
           hapticsEnabled={hapticsEnabled}
           onToggleHaptics={() => actions.setHapticsEnabled((v) => !v)}
+          onOpenPlanning={() => setPlanningOpen(true)}
+          plannedCount={plannedItems.length}
         />
 
         <main
@@ -313,19 +315,6 @@ export default function App() {
               compact={summaryCompact}
             />
           </div>
-
-          {!summaryCompact && (
-            <PlanningList
-              plannedItems={plannedItems}
-              priceMemory={priceMemory}
-              estimate={plannedEstimate}
-              expanded={planningExpanded}
-              onToggleExpanded={() => setPlanningExpanded((v) => !v)}
-              onAdd={actions.addPlannedItems}
-              onRemove={actions.removePlannedItem}
-              onConvert={handleConvertPlanned}
-            />
-          )}
 
           {allPurchased && !summaryCompact && <AllDoneBanner spent={spent} budget={budget} />}
 
@@ -409,6 +398,17 @@ export default function App() {
         />
 
         <SupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
+
+        <PlanningScreen
+          open={planningOpen}
+          plannedItems={plannedItems}
+          priceMemory={priceMemory}
+          estimate={plannedEstimate}
+          onClose={() => setPlanningOpen(false)}
+          onAdd={actions.addPlannedItems}
+          onRemove={actions.removePlannedItem}
+          onConvert={handleConvertPlanned}
+        />
 
         <ToastNotification
           toast={toast}

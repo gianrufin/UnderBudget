@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
-import { Pencil, Trash2, Copy, Check } from 'lucide-react'
+import { Pencil, Trash2, Check, Minus, Plus } from 'lucide-react'
 import { useCurrency } from '../context/CurrencyContext'
+import { tapHaptic } from '../lib/haptics'
 
 const SWIPE_TRIGGER = -64
 const SWIPE_MAX = -96
 
-export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete, onDuplicate }) {
+export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete, onAdjustQuantity }) {
   const { fmt: formatCurrency } = useCurrency()
   const subtotal = item.price * item.quantity
 
@@ -86,31 +87,70 @@ export default function GroceryItemRow({ item, isNew, onToggle, onEdit, onDelete
         </button>
 
         <div className="min-w-0 flex-1">
-          <p className={`truncate text-sm font-medium ${item.purchased ? 'opacity-40 line-through' : ''}`}>
-            {item.name}
-          </p>
-          <p className="text-xs tabular-nums opacity-50">
-            {formatCurrency(item.price)} × {item.quantity}
-          </p>
-        </div>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className={`truncate text-sm font-medium ${item.purchased ? 'opacity-40 line-through' : ''}`}>
+              {item.name}
+            </p>
+            <p className={`shrink-0 text-sm font-semibold tabular-nums ${item.purchased ? 'opacity-40' : ''}`}>
+              {formatCurrency(subtotal)}
+            </p>
+          </div>
 
-        <p className={`shrink-0 text-sm font-semibold tabular-nums ${item.purchased ? 'opacity-40' : ''}`}>
-          {formatCurrency(subtotal)}
-        </p>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <p className="shrink-0 text-xs tabular-nums opacity-50">{formatCurrency(item.price)} each</p>
 
-        <div className="flex shrink-0 items-center gap-1">
-          <IconButton label={`Duplicate ${item.name}`} onClick={() => onDuplicate(item.id)}>
-            <Copy className="h-4 w-4" />
-          </IconButton>
-          <IconButton label={`Edit ${item.name}`} onClick={() => onEdit(item)}>
-            <Pencil className="h-4 w-4" />
-          </IconButton>
-          <IconButton label={`Delete ${item.name}`} onClick={() => onDelete(item)}>
-            <Trash2 className="h-4 w-4" />
-          </IconButton>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <div
+                className="flex items-center rounded-md border"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                <StepButton
+                  label={`Decrease quantity of ${item.name}`}
+                  disabled={item.quantity <= 1}
+                  onClick={() => {
+                    tapHaptic(6)
+                    onAdjustQuantity(item.id, -1)
+                  }}
+                >
+                  <Minus className="h-3 w-3" />
+                </StepButton>
+                <span className="w-6 text-center text-xs font-semibold tabular-nums">{item.quantity}</span>
+                <StepButton
+                  label={`Increase quantity of ${item.name}`}
+                  onClick={() => {
+                    tapHaptic(6)
+                    onAdjustQuantity(item.id, 1)
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                </StepButton>
+              </div>
+
+              <IconButton label={`Edit ${item.name}`} onClick={() => onEdit(item)}>
+                <Pencil className="h-4 w-4" />
+              </IconButton>
+              <IconButton label={`Delete ${item.name}`} onClick={() => onDelete(item)}>
+                <Trash2 className="h-4 w-4" />
+              </IconButton>
+            </div>
+          </div>
         </div>
       </div>
     </li>
+  )
+}
+
+function StepButton({ label, onClick, disabled, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="flex h-7 w-7 items-center justify-center opacity-70 transition-transform active:scale-90 disabled:opacity-30"
+    >
+      {children}
+    </button>
   )
 }
 
@@ -120,7 +160,7 @@ function IconButton({ label, onClick, children }) {
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex h-8 w-8 items-center justify-center rounded-lg opacity-60 transition-transform hover:opacity-100 active:scale-90"
+      className="flex h-7 w-7 items-center justify-center rounded-lg opacity-60 transition-transform hover:opacity-100 active:scale-90"
     >
       {children}
     </button>

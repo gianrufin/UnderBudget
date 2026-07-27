@@ -16,6 +16,12 @@ export default function Header({
   hasBudget,
   onOpenCurrency,
   onOpenSupport,
+  onShareList,
+  canShare,
+  onRestockLastList,
+  canRestock,
+  hapticsEnabled,
+  onToggleHaptics,
 }) {
   return (
     <header
@@ -40,6 +46,12 @@ export default function Header({
           hasBudget={hasBudget}
           onOpenCurrency={onOpenCurrency}
           onOpenSupport={onOpenSupport}
+          onShareList={onShareList}
+          canShare={canShare}
+          onRestockLastList={onRestockLastList}
+          canRestock={canRestock}
+          hapticsEnabled={hapticsEnabled}
+          onToggleHaptics={onToggleHaptics}
         />
       </div>
     </header>

@@ -8,6 +8,10 @@ const KEYS = {
   sortMode: 'underbudget:sortMode',
   currency: 'underbudget:currency',
   hideCompleted: 'underbudget:hideCompleted',
+  hapticsEnabled: 'underbudget:hapticsEnabled',
+  plannedItems: 'underbudget:plannedItems',
+  priceMemory: 'underbudget:priceMemory',
+  lastList: 'underbudget:lastList',
 }
 
 function makeId() {
@@ -15,8 +19,9 @@ function makeId() {
 }
 
 /**
- * Central state for UnderBudget: budget, the grocery item list, theme, and
- * sort preference — all persisted to localStorage.
+ * Central state for UnderBudget: budget, the grocery item list, a separate
+ * "planning" list, theme/currency/sort preferences — all persisted to
+ * localStorage.
  */
 export function useGroceryStore() {
   const [budget, setBudgetRaw] = useLocalStorage(KEYS.budget, null)
@@ -25,6 +30,10 @@ export function useGroceryStore() {
   const [sortMode, setSortMode] = useLocalStorage(KEYS.sortMode, 'recent')
   const [currency, setCurrency] = useLocalStorage(KEYS.currency, 'PHP')
   const [hideCompleted, setHideCompleted] = useLocalStorage(KEYS.hideCompleted, false)
+  const [hapticsEnabled, setHapticsEnabled] = useLocalStorage(KEYS.hapticsEnabled, true)
+  const [plannedItems, setPlannedItems] = useLocalStorage(KEYS.plannedItems, [])
+  const [priceMemory, setPriceMemory] = useLocalStorage(KEYS.priceMemory, {})
+  const [lastList, setLastList] = useLocalStorage(KEYS.lastList, [])
 
   const lastAddedRef = useRef(null)
 
@@ -48,12 +57,28 @@ export function useGroceryStore() {
     return out
   }, [items])
 
+  // Rough forecast for the planning list, using whatever price we last saw
+  // for each planned item's name (0 if we've never bought it before).
+  const plannedEstimate = useMemo(
+    () => plannedItems.reduce((sum, p) => sum + (priceMemory[p.name.toLowerCase()] ?? 0), 0),
+    [plannedItems, priceMemory],
+  )
+
   const setBudget = useCallback(
     (amount) => setBudgetRaw(amount > 0 ? amount : null),
     [setBudgetRaw],
   )
 
   const resetBudget = useCallback(() => setBudgetRaw(null), [setBudgetRaw])
+
+  const rememberPrice = useCallback(
+    (name, price) => {
+      const key = name.trim().toLowerCase()
+      if (!key) return
+      setPriceMemory((prev) => ({ ...prev, [key]: price }))
+    },
+    [setPriceMemory],
+  )
 
   const addItem = useCallback(
     ({ name, price, quantity }) => {
@@ -67,14 +92,27 @@ export function useGroceryStore() {
       }
       lastAddedRef.current = item.id
       setItems((prev) => [...prev, item])
+      rememberPrice(item.name, price)
       return item
     },
-    [setItems],
+    [setItems, rememberPrice],
   )
 
   const updateItem = useCallback(
     (id, patch) => {
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
+      if (patch.name && patch.price != null) rememberPrice(patch.name, patch.price)
+    },
+    [setItems, rememberPrice],
+  )
+
+  const adjustQuantity = useCallback(
+    (id, delta) => {
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === id ? { ...it, quantity: Math.max(1, it.quantity + delta) } : it,
+        ),
+      )
     },
     [setItems],
   )
@@ -97,34 +135,48 @@ export function useGroceryStore() {
     [setItems],
   )
 
-  const clearItems = useCallback(() => setItems([]), [setItems])
+  // Snapshot the current cart (name/price/quantity only) so it can be
+  // restocked later, whenever the list is about to be cleared.
+  const stashLastList = useCallback(
+    (list) => {
+      if (list.length === 0) return
+      setLastList(list.map(({ name, price, quantity }) => ({ name, price, quantity })))
+    },
+    [setLastList],
+  )
+
+  const clearItems = useCallback(() => {
+    stashLastList(items)
+    setItems([])
+  }, [items, setItems, stashLastList])
 
   const newList = useCallback(
     (preserveBudget) => {
+      stashLastList(items)
       setItems([])
       if (!preserveBudget) setBudgetRaw(null)
     },
-    [setItems, setBudgetRaw],
+    [items, setItems, setBudgetRaw, stashLastList],
   )
+
+  const restockLastList = useCallback(() => {
+    if (lastList.length === 0) return
+    const fresh = lastList.map((it) => ({
+      id: makeId(),
+      name: it.name,
+      price: it.price,
+      quantity: it.quantity,
+      purchased: false,
+      createdAt: Date.now(),
+    }))
+    setItems((prev) => [...prev, ...fresh])
+  }, [lastList, setItems])
 
   const togglePurchased = useCallback(
     (id) => {
       setItems((prev) =>
         prev.map((it) => (it.id === id ? { ...it, purchased: !it.purchased } : it)),
       )
-    },
-    [setItems],
-  )
-
-  const duplicateItem = useCallback(
-    (id) => {
-      setItems((prev) => {
-        const item = prev.find((it) => it.id === id)
-        if (!item) return prev
-        const copy = { ...item, id: makeId(), createdAt: Date.now(), purchased: false }
-        lastAddedRef.current = copy.id
-        return [...prev, copy]
-      })
     },
     [setItems],
   )
@@ -136,6 +188,35 @@ export function useGroceryStore() {
     setItems((prev) => prev.filter((it) => it.id !== id))
   }, [setItems])
 
+  // -- Planning list ----------------------------------------------------------
+  const addPlannedItems = useCallback(
+    (names) => {
+      setPlannedItems((prev) => {
+        const existing = new Set(prev.map((p) => p.name.toLowerCase()))
+        const fresh = []
+        for (const raw of names) {
+          const name = raw.trim()
+          if (!name) continue
+          const key = name.toLowerCase()
+          if (existing.has(key)) continue
+          existing.add(key)
+          fresh.push({ id: makeId(), name, createdAt: Date.now() })
+        }
+        return fresh.length ? [...prev, ...fresh] : prev
+      })
+    },
+    [setPlannedItems],
+  )
+
+  const removePlannedItem = useCallback(
+    (id) => {
+      setPlannedItems((prev) => prev.filter((p) => p.id !== id))
+    },
+    [setPlannedItems],
+  )
+
+  const clearPlannedItems = useCallback(() => setPlannedItems([]), [setPlannedItems])
+
   return {
     budget,
     items,
@@ -143,7 +224,12 @@ export function useGroceryStore() {
     sortMode,
     currency,
     hideCompleted,
+    hapticsEnabled,
     recentPrices,
+    plannedItems,
+    priceMemory,
+    plannedEstimate,
+    lastList,
     spent,
     ratio,
     actions: {
@@ -151,17 +237,22 @@ export function useGroceryStore() {
       resetBudget,
       addItem,
       updateItem,
+      adjustQuantity,
       deleteItem,
       restoreItem,
       clearItems,
       newList,
+      restockLastList,
       togglePurchased,
-      duplicateItem,
       undoLastAdd,
       setTheme,
       setSortMode,
       setCurrency,
       setHideCompleted,
+      setHapticsEnabled,
+      addPlannedItems,
+      removePlannedItem,
+      clearPlannedItems,
     },
   }
 }

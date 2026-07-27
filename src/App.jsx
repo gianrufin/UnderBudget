@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGroceryStore } from './hooks/useGroceryStore'
 import { useTheme } from './hooks/useTheme'
 import { useBudgetColors } from './hooks/useBudgetColors'
-import { toNumber } from './lib/format'
-import { statusChangeHaptic } from './lib/haptics'
+import { toNumber, formatCurrency } from './lib/format'
+import { getCurrency } from './lib/currencies'
+import { statusChangeHaptic, setHapticsEnabled as setHapticsModuleEnabled } from './lib/haptics'
+import { buildShareText, shareOrCopy } from './lib/shareList'
 import { CurrencyProvider } from './context/CurrencyContext'
 import AppShell from './components/AppShell'
 import Header from './components/Header'
 import BudgetSetup from './components/BudgetSetup'
 import BudgetSummary from './components/BudgetSummary'
 import AllDoneBanner from './components/AllDoneBanner'
+import PlanningList from './components/PlanningList'
 import GroceryList from './components/GroceryList'
 import QuickAddPanel from './components/QuickAddPanel'
 import PersistentNumberPad from './components/PersistentNumberPad'
@@ -26,7 +29,12 @@ export default function App() {
     sortMode,
     currency,
     hideCompleted,
+    hapticsEnabled,
     recentPrices,
+    plannedItems,
+    priceMemory,
+    plannedEstimate,
+    lastList,
     spent,
     ratio,
     actions,
@@ -34,10 +42,23 @@ export default function App() {
   const isDark = useTheme(theme)
   const { status } = useBudgetColors(ratio, isDark)
 
+  // App itself renders <CurrencyProvider>, so it isn't a descendant of its
+  // own context — handlers that need currency formatting outside the tree
+  // (e.g. building share text) build it directly from the store's currency.
+  const fmt = useMemo(() => {
+    const { code, locale } = getCurrency(currency)
+    return (v) => formatCurrency(v, { currency: code, locale })
+  }, [currency])
+
+  useEffect(() => {
+    setHapticsModuleEnabled(hapticsEnabled)
+  }, [hapticsEnabled])
+
   const [menuOpen, setMenuOpen] = useState(false)
   const [clearOpen, setClearOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
+  const [planningExpanded, setPlanningExpanded] = useState(false)
   const [toast, setToast] = useState(null)
   const [lastAddedId, setLastAddedId] = useState(null)
   const [summaryCompact, setSummaryCompact] = useState(false)
@@ -50,6 +71,7 @@ export default function App() {
   const [quantity, setQuantity] = useState('1')
   const [activeInput, setActiveInput] = useState('price')
   const [editingId, setEditingId] = useState(null)
+  const convertingPlannedRef = useRef(null)
 
   const nameRef = useRef(null)
   const priceRef = useRef(null)
@@ -61,6 +83,7 @@ export default function App() {
     setQuantity('1')
     setActiveInput('price')
     setEditingId(null)
+    convertingPlannedRef.current = null
   }, [])
 
   const showToast = useCallback((message, extra) => {
@@ -108,6 +131,10 @@ export default function App() {
     } else {
       const item = actions.addItem({ name, price: priceNum, quantity: qtyNum })
       setLastAddedId(item.id)
+      const converting = convertingPlannedRef.current
+      if (converting && converting.name.toLowerCase() === name.toLowerCase()) {
+        actions.removePlannedItem(converting.id)
+      }
     }
     resetQuickAdd()
     priceRef.current?.focus()
@@ -197,6 +224,32 @@ export default function App() {
     priceRef.current?.focus()
   }, [])
 
+  // Tapping "Buy" on a planned item drops its name straight into the quick-add
+  // row and jumps to the price field — pre-filled with what it cost last
+  // time, if we've bought it before.
+  const handleConvertPlanned = useCallback((planned) => {
+    setEditingId(null)
+    setItemName(planned.name)
+    const remembered = priceMemory[planned.name.toLowerCase()]
+    setPrice(remembered != null ? String(remembered) : '')
+    setQuantity('1')
+    setActiveInput('price')
+    convertingPlannedRef.current = { id: planned.id, name: planned.name }
+    priceRef.current?.focus()
+  }, [priceMemory])
+
+  const handleShareList = useCallback(async () => {
+    const text = buildShareText({ items, budget, spent, currency, fmt })
+    const result = await shareOrCopy(text)
+    if (result === 'copied') showToast('List copied to clipboard')
+    else if (result === 'unsupported') showToast('Sharing is not supported on this device')
+  }, [items, budget, spent, currency, fmt, showToast])
+
+  const handleRestockLastList = useCallback(() => {
+    actions.restockLastList()
+    showToast('Restocked your last list')
+  }, [actions, showToast])
+
   if (!budget) {
     return (
       <CurrencyProvider currencyCode={currency}>
@@ -228,6 +281,12 @@ export default function App() {
           hasBudget={Boolean(budget)}
           onOpenCurrency={() => setCurrencyOpen(true)}
           onOpenSupport={() => setSupportOpen(true)}
+          onShareList={handleShareList}
+          canShare={items.length > 0}
+          onRestockLastList={handleRestockLastList}
+          canRestock={lastList.length > 0}
+          hapticsEnabled={hapticsEnabled}
+          onToggleHaptics={() => actions.setHapticsEnabled((v) => !v)}
         />
 
         <main
@@ -255,6 +314,19 @@ export default function App() {
             />
           </div>
 
+          {!summaryCompact && (
+            <PlanningList
+              plannedItems={plannedItems}
+              priceMemory={priceMemory}
+              estimate={plannedEstimate}
+              expanded={planningExpanded}
+              onToggleExpanded={() => setPlanningExpanded((v) => !v)}
+              onAdd={actions.addPlannedItems}
+              onRemove={actions.removePlannedItem}
+              onConvert={handleConvertPlanned}
+            />
+          )}
+
           {allPurchased && !summaryCompact && <AllDoneBanner spent={spent} budget={budget} />}
 
           <GroceryList
@@ -267,7 +339,7 @@ export default function App() {
             onToggle={actions.togglePurchased}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onDuplicate={actions.duplicateItem}
+            onAdjustQuantity={actions.adjustQuantity}
             onClearAll={() => setClearOpen(true)}
           />
         </main>

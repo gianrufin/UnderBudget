@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Trash2, EyeOff, Eye } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Trash2, EyeOff, Eye, Search, X } from 'lucide-react'
 import GroceryItemRow from './GroceryItemRow'
 import EmptyState from './EmptyState'
 
@@ -17,6 +17,10 @@ const SORT_LABELS = {
   alpha: 'Alphabetical',
 }
 
+// Only surface a search box once a list is long enough that scanning by eye
+// stops being faster than typing a few letters.
+const SEARCH_THRESHOLD = 8
+
 export default function GroceryList({
   items,
   sortMode,
@@ -27,21 +31,27 @@ export default function GroceryList({
   onToggle,
   onEdit,
   onDelete,
-  onDuplicate,
+  onAdjustQuantity,
   onClearAll,
 }) {
+  const [query, setQuery] = useState('')
+
   const visible = useMemo(
     () => (hideCompleted ? items.filter((it) => !it.purchased) : items),
     [items, hideCompleted],
   )
-  const sorted = useMemo(() => [...visible].sort(SORTERS[sortMode] ?? SORTERS.recent), [visible, sortMode])
+  const searched = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return q ? visible.filter((it) => it.name.toLowerCase().includes(q)) : visible
+  }, [visible, query])
+  const sorted = useMemo(() => [...searched].sort(SORTERS[sortMode] ?? SORTERS.recent), [searched, sortMode])
   const purchasedCount = items.length - items.filter((it) => !it.purchased).length
 
   return (
     <section className="mx-4 mt-4 mb-2 flex-1" aria-label="Grocery items">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-y-1.5">
         <h2 className="text-xs font-semibold uppercase tracking-wide opacity-60">
-          Your items ({hideCompleted ? `${sorted.length} of ${items.length}` : items.length})
+          Your items ({hideCompleted || query ? `${sorted.length} of ${items.length}` : items.length})
         </h2>
         <div className="flex items-center gap-2">
           {purchasedCount > 0 && (
@@ -77,6 +87,28 @@ export default function GroceryList({
         </div>
       </div>
 
+      {items.length >= SEARCH_THRESHOLD && (
+        <div
+          className="mb-2 flex items-center gap-2 rounded-lg border px-2.5 py-1.5"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
+          <Search className="h-3.5 w-3.5 shrink-0 opacity-50" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search items"
+            aria-label="Search items"
+            className="w-full bg-transparent text-sm outline-none"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="shrink-0 opacity-50">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
       <div
         className="overflow-hidden rounded-2xl border transition-colors duration-500"
         style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}
@@ -93,7 +125,7 @@ export default function GroceryList({
                 onToggle={onToggle}
                 onEdit={onEdit}
                 onDelete={onDelete}
-                onDuplicate={onDuplicate}
+                onAdjustQuantity={onAdjustQuantity}
               />
             ))}
           </ul>
